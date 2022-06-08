@@ -10,8 +10,6 @@ but I may add support for other APIs later.
 
 - Ability to fetch weather data from different sources (google/yandex/gismeteo/etc).
 - Requests caching - only download info from api if local copy is out of date.
-- Location filtering - only accept valid location names (coz wttr api is a meme
-and allows to measure weather of requests like "your mom").
 - Ability to retrieve forecasts, not just current weather.
 
 ## License

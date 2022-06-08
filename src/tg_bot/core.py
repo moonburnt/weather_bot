@@ -23,6 +23,10 @@ from asyncio import gather
 from datetime import datetime
 from sys import exit
 from uuid import uuid4
+from typing import Optional
+
+from bs4 import BeautifulSoup as soup
+
 import logging
 
 log = logging.getLogger(__name__)
@@ -83,8 +87,40 @@ def make_bot(token: str) -> WeatherBot:
             "For example:\nweather Minsk"
         )
 
+    async def normalize_location(request: str) -> Optional[str]:
+        """Convert request string to a proper location name.
+        In case request is invalid - returns None.
+        """
+
+        txt = ""
+
+        async with bot.fetcher_session.get(
+            f"https://www.geonames.org/search.html?q={request}"
+        ) as answ:
+            if answ.status == 200:
+                txt = await answ.text()
+            else:
+                return
+
+        try:
+            sauce = soup(txt, "html.parser")
+            first_match = sauce.select_one("tr:nth-of-type(3)")
+            name_column = first_match.select_one("td:nth-of-type(2)")
+            answer = name_column.a.text
+        except Exception as e:
+            log.warning(f"Unable to normalize a location {request}: {e}")
+        else:
+            return answer
+
+
+
     async def get_weather(request: str) -> str:
         """Get weather for requested location from API"""
+
+        request = await normalize_location(request)
+
+        if request is None:
+            return "Invalid location, please try something else"
 
         txt = ""
 
@@ -97,7 +133,7 @@ def make_bot(token: str) -> WeatherBot:
                 txt = "Unknown location, please try again"
             else:
                 txt = "An error occured, please try different search"
-                log.warning(f"Weather api returned {answ.status_code}")
+                log.warning(f"Weather api returned {answ.status}")
 
         return txt
 
