@@ -4,6 +4,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.types import InlineQuery, InputTextMessageContent, InlineQueryResultArticle
 from aiohttp import client_exceptions, ClientSession
 from asyncio import gather
+from datetime import datetime
 from sys import exit
 from uuid import uuid4
 import logging
@@ -105,7 +106,7 @@ def make_bot(token: str) -> WeatherBot:
 
         item = InlineQueryResultArticle(
             # id must be unique for each answer
-            id = str(uuid4()),
+            id = f"{uuid4()}-{datetime.now()}",
             title=f"Weather in {text}",
             input_message_content = input_content,
         )
