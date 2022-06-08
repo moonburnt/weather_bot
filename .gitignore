@@ -1,0 +1,6 @@
+TODO.txt
+__pycache__
+.venv
+run.sh
+.env
+db.sqlite
