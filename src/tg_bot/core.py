@@ -1,9 +1,11 @@
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.utils import markdown
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.types import InlineQuery, InputTextMessageContent, InlineQueryResultArticle
 from aiohttp import client_exceptions, ClientSession
 from asyncio import gather
 from sys import exit
+from uuid import uuid4
 import logging
 
 log = logging.getLogger(__name__)
@@ -48,7 +50,6 @@ class WeatherBot(Bot):
             skip_updates=True,
         )
 
-
 def make_bot(token: str) -> WeatherBot:
     bot = WeatherBot(
         token=token,
@@ -64,14 +65,8 @@ def make_bot(token: str) -> WeatherBot:
             "For example:\nweather Minsk"
         )
 
-    @bot.dp.message_handler(
-        lambda message: message.text != "/weather",
-        commands=["weather"],
-    )
-    async def send_welcome(message: types.Message):
-        """Handler used as response to /weather command"""
-
-        request = message.text.split("/weather")[1]
+    async def get_weather(request:str) -> str:
+        """Get weather for requested location from API"""
 
         txt = ""
 
@@ -87,6 +82,36 @@ def make_bot(token: str) -> WeatherBot:
                     txt = "An error occured, please try different search"
                     log.warning(f"Weather api returned {answ.status_code}")
 
+        return txt
+
+    @bot.dp.message_handler(
+        lambda message: message.text != "/weather",
+        commands=["weather"],
+    )
+    async def send_weather(message: types.Message):
+        """Handler used as response to /weather command"""
+
+        request = message.text.split("/weather")[1]
+
+        txt = await get_weather(request)
+
         await message.reply(txt)
+
+    @bot.dp.inline_handler()
+    async def inline_weather(inline_query: InlineQuery):
+        text = inline_query.query or "КАЗАХСТАН"
+        content = await get_weather(text)
+        input_content = InputTextMessageContent(content)
+
+        item = InlineQueryResultArticle(
+            # id must be unique for each answer
+            id = str(uuid4()),
+            title=f"Weather in {text}",
+            input_message_content = input_content,
+        )
+
+        # await bot.answer_inline_query(inline_query.id, results=[item], cache_time=1)
+        await bot.answer_inline_query(inline_query.id, results=[item])
+
 
     return bot
