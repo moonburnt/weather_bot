@@ -51,6 +51,7 @@ class WeatherBot(Bot):
             skip_updates=True,
         )
 
+
 def make_bot(token: str) -> WeatherBot:
     bot = WeatherBot(
         token=token,
@@ -66,7 +67,7 @@ def make_bot(token: str) -> WeatherBot:
             "For example:\nweather Minsk"
         )
 
-    async def get_weather(request:str) -> str:
+    async def get_weather(request: str) -> str:
         """Get weather for requested location from API"""
 
         txt = ""
@@ -74,14 +75,13 @@ def make_bot(token: str) -> WeatherBot:
         async with bot.fetcher_session.get(
             f"https://www.wttr.in/{request}?format=4"
         ) as answ:
-            match answ.status:
-                case 200:
-                    txt = await answ.text()
-                case 404:
-                    txt = "Unknown location, please try again"
-                case _:
-                    txt = "An error occured, please try different search"
-                    log.warning(f"Weather api returned {answ.status_code}")
+            if answ.status == 200:
+                txt = await answ.text()
+            elif answ.status == 404:
+                txt = "Unknown location, please try again"
+            else:
+                txt = "An error occured, please try different search"
+                log.warning(f"Weather api returned {answ.status_code}")
 
         return txt
 
@@ -106,13 +106,12 @@ def make_bot(token: str) -> WeatherBot:
 
         item = InlineQueryResultArticle(
             # id must be unique for each answer
-            id = f"{uuid4()}-{datetime.now()}",
+            id=f"{uuid4()}-{datetime.now()}",
             title=f"Weather in {text}",
-            input_message_content = input_content,
+            input_message_content=input_content,
         )
 
         # await bot.answer_inline_query(inline_query.id, results=[item], cache_time=1)
         await bot.answer_inline_query(inline_query.id, results=[item])
-
 
     return bot
