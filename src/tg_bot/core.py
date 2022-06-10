@@ -18,14 +18,11 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.utils import markdown
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.types import InlineQuery, InputTextMessageContent, InlineQueryResultArticle
-from aiohttp import client_exceptions, ClientSession
-from asyncio import gather
 from datetime import datetime
 from sys import exit
 from uuid import uuid4
 from typing import Optional
-
-from bs4 import BeautifulSoup as soup
+from src.fetcher import WeatherFetcher
 
 import logging
 
@@ -55,11 +52,9 @@ class WeatherBot(Bot):
             storage = MemoryStorage()
 
         self.dp = Dispatcher(self, storage=storage)
-
-        self.fetcher_session = ClientSession()
-        self.fetcher_session.headers[
-            "user-agent"
-        ] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101 Firefox/78.0"
+        self.weather_fetcher = WeatherFetcher(
+            user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101 Firefox/78.0"
+        )
 
         self.known_weather = {}
 
@@ -87,56 +82,6 @@ def make_bot(token: str) -> WeatherBot:
             "For example:\nweather Minsk"
         )
 
-    async def normalize_location(request: str) -> Optional[str]:
-        """Convert request string to a proper location name.
-        In case request is invalid - returns None.
-        """
-
-        txt = ""
-
-        async with bot.fetcher_session.get(
-            f"https://www.geonames.org/search.html?q={request}"
-        ) as answ:
-            if answ.status == 200:
-                txt = await answ.text()
-            else:
-                return
-
-        try:
-            sauce = soup(txt, "html.parser")
-            first_match = sauce.select_one("tr:nth-of-type(3)")
-            name_column = first_match.select_one("td:nth-of-type(2)")
-            answer = name_column.a.text
-        except Exception as e:
-            log.warning(f"Unable to normalize a location {request}: {e}")
-        else:
-            return answer
-
-
-
-    async def get_weather(request: str) -> str:
-        """Get weather for requested location from API"""
-
-        request = await normalize_location(request)
-
-        if request is None:
-            return "Invalid location, please try something else"
-
-        txt = ""
-
-        async with bot.fetcher_session.get(
-            f"https://www.wttr.in/{request}?format=4"
-        ) as answ:
-            if answ.status == 200:
-                txt = await answ.text()
-            elif answ.status == 404:
-                txt = "Unknown location, please try again"
-            else:
-                txt = "An error occured, please try different search"
-                log.warning(f"Weather api returned {answ.status}")
-
-        return txt
-
     @bot.dp.message_handler(
         lambda message: message.text != "/weather",
         commands=["weather"],
@@ -146,14 +91,14 @@ def make_bot(token: str) -> WeatherBot:
 
         request = message.text.split("/weather")[1]
 
-        txt = await get_weather(request)
+        txt = await bot.weather_fetcher.get_weather(request)
 
         await message.reply(txt)
 
     @bot.dp.inline_handler()
     async def inline_weather(inline_query: InlineQuery):
         text = inline_query.query or "КАЗАХСТАН"
-        content = await get_weather(text)
+        content = await bot.weather_fetcher.get_weather(text)
         input_content = InputTextMessageContent(content)
 
         item = InlineQueryResultArticle(
