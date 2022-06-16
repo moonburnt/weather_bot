@@ -97,14 +97,28 @@ def make_bot(token: str) -> WeatherBot:
 
     @bot.dp.inline_handler()
     async def inline_weather(inline_query: InlineQuery):
-        text = inline_query.query or "КАЗАХСТАН"
-        content = await bot.weather_fetcher.get_weather(text)
-        input_content = InputTextMessageContent(content)
+        text = inline_query.query or None
+        title_msg = ""
+        content_msg = ""
+
+        if text is None:
+            title_msg = "Give me current weather!"
+            bot_info = await bot.get_me()
+            content_msg = (
+                "In order to get current weather in specific location, "
+                f"type location name after @{bot_info.username}. \n\n"
+                f"For example:\n@{bot_info.username} Minsk"
+            )
+        else:
+            title_msg = f"Weather in {text}"
+            content_msg = await bot.weather_fetcher.get_weather(text)
+
+        input_content = InputTextMessageContent(content_msg)
 
         item = InlineQueryResultArticle(
             # id must be unique for each answer
             id=f"{uuid4()}-{datetime.now()}",
-            title=f"Weather in {text}",
+            title=title_msg,
             input_message_content=input_content,
         )
 
