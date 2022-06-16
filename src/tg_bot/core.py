@@ -72,14 +72,25 @@ def make_bot(token: str) -> WeatherBot:
         token=token,
     )
 
-    @bot.dp.message_handler(commands=["help", "start"])
+    @bot.dp.message_handler(commands=["start"])
     async def send_welcome(message: types.Message):
-        """Handler used as response to /help and "start" commands"""
+        """Handler used as response to /start command"""
 
         await message.reply(
             "Hello, I'm a simple weather bot!\n"
-            "If you want to ask for a weather - just type /weather {name-of-city}\n"
-            "For example:\nweather Minsk"
+            "If you want to get current weather - just type\n/weather {name-of-city}"
+            "\n\nFor example:\n/weather Minsk"
+        )
+
+    @bot.dp.message_handler(commands=["help"])
+    async def send_welcome(message: types.Message):
+        """Handler used as response to /help command"""
+
+        await message.reply(
+            "If you want to get current weather - just type\n/weather {name-of-city}"
+            "\n\nFor example:\n/weather Minsk\n\n"
+            "If you have any questions/suggestions - feel free to open an issue "
+            "on bot's github:\nhttps://github.com/moonburnt/weather_bot"
         )
 
     @bot.dp.message_handler(
